@@ -10,6 +10,14 @@ namespace EntropiaApp.Models
             PositiveRowNumbers = new List<int>();
             NegativeRowNumbers = new List<int>();
         }
+
+        public DecisionAttributeOccurence(string value, List<int> positiveValues, List<int> negativeValues)
+        {
+            Value = value;
+            PositiveRowNumbers = positiveValues;
+            NegativeRowNumbers = negativeValues;
+
+        }
         public string Value { get; set; }
         public int Amount => PositiveRowNumbers.Count + NegativeRowNumbers.Count;
         public List<int> PositiveRowNumbers { get; set; }

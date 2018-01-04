@@ -80,7 +80,8 @@ namespace EntropiaApp.Services
             GetOccurencesList(DecisionRows.First().Length - 1);
             foreach (var occurence in LastRowOccurences)
             {
-                occurence.Entropy = -(MathExtension.GetBinaryLogaritm(occurence.Amount, DecisionRows.Count) + MathExtension.GetBinaryLogaritm(DecisionRows.Count - occurence.Amount, DecisionRows.Count));
+                occurence.Entropy = -(MathExtension.GetBinaryLogaritm(occurence.Amount, DecisionRows.Count)
+                    + MathExtension.GetBinaryLogaritm(DecisionRows.Count - occurence.Amount, DecisionRows.Count));
             }
             var totalEntropy = CalculateTotalEntropy();
             GetInformationGain(totalEntropy);

@@ -99,7 +99,22 @@ namespace EntropiaApp.Services
                 rejectedList = DecisionColumns.Where(column => AlreadyUsedIndexes.Contains((int)column.ColumnIndex));
                 foreach (var decisionColumn in DecisionColumns.Except(rejectedList))
                 {
+                    var restrictedAttributes = new List<DecisionAttributeOccurence>();
+                    foreach (var innerAttribute in decisionColumn.Attributes)
+                    {
+                        if (innerAttribute.PositiveRowNumbers.Intersect(attributeRows).Any() || innerAttribute.NegativeRowNumbers.Intersect(attributeRows).Any())
+                        {
+                            restrictedAttributes.Add(innerAttribute);
+                            //Okej, robimy to na przyklad dla slonecznie, ktore wystepuje w wierszach, zalozmy 1,4 (positive in last col) oraz 7, 9 (negative in lst col)
+                            //I teraz sprawdzam ile ta kolumna decyzyjna (np. wilgotnosc) ma roznych attrybutow (np. bardzo, malo) w wierszach 1,4,7,9
+                            //Potrzebuje tego zeby moc policzyc Entropie slonecznie z kazda INNA(!!)* kolumna decyzyjna
+                            //* - czyli dlatego uzywam tych co nie ma w AlreadyUsed zeby sie nie okazalo ze slonecznie porownuje z pogoda, lub innym uzytym
 
+                            //Jak to bede mial to moge liczyc entropie, w Entropii uzyje ilosc unikalnych atrybutow w kolumnie dla tych wierszy i  tyle jest tych czesci - nawiasow w wyrazeniu matematycznym
+                            //Potem Information Gain jest prosty i mamy go gdzies juz liczonego tutaj wyzej
+                        }
+                    }
+                    decisionColumn.CaseEntropy =
                 }
 
 

@@ -13,5 +13,7 @@ namespace EntropiaApp.Models
         public double Entropy { get; set; }
         public double InformationGain { get; set; }
         public int? ColumnIndex { get; set; }
+        public double CaseEntropy { get; set; }
+        public double CaseInformationGain { get; set; }
     }
 }
