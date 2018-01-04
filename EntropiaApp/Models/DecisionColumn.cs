@@ -12,5 +12,6 @@ namespace EntropiaApp.Models
         public List<DecisionAttributeOccurence> Attributes { get; set; }
         public double Entropy { get; set; }
         public double InformationGain { get; set; }
+        public int? ColumnIndex { get; set; }
     }
 }

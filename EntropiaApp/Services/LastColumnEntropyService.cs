@@ -6,12 +6,12 @@ using EntropiaApp.Utils;
 
 namespace EntropiaApp.Services
 {
-    public class LastRowEntropyService
+    public class LastColumnEntropyService
     {
         private List<Occurence> LastRowOccurences { get; }
         private List<string[]> DecisionRows { get; }
 
-        public LastRowEntropyService(List<string[]> decisionRows)
+        public LastColumnEntropyService(List<string[]> decisionRows)
         {
             LastRowOccurences = new List<Occurence>();
             DecisionRows = decisionRows;

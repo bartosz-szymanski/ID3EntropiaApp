@@ -1,8 +1,10 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using EntropiaApp.Enums;
 using EntropiaApp.Models;
 using EntropiaApp.Utils;
+using MoreLinq;
 
 namespace EntropiaApp.Services
 {
@@ -12,12 +14,14 @@ namespace EntropiaApp.Services
         private List<string[]> DecisionRows { get; }
         public List<DecisionColumn> DecisionColumns { get; set; }
         private double TotalEntropy { get; }
+        public List<int> AlreadyUsedIndexes { get; set; }
 
         public DecisionColumnsEntropyService(List<Occurence> lastRowOccurences, List<string[]> decisionRows, double totalEntropy)
         {
             LastRowOccurences = lastRowOccurences;
             DecisionRows = decisionRows;
             TotalEntropy = totalEntropy;
+            AlreadyUsedIndexes = new List<int>();
         }
 
         public List<DecisionColumn> CalculateDecisions()
@@ -51,6 +55,7 @@ namespace EntropiaApp.Services
             }
             CalculateColumnsEntropies();
             CalculateColumnInformationGain();
+            DoUnknownThing();
 
             return DecisionColumns;
         }
@@ -78,7 +83,28 @@ namespace EntropiaApp.Services
             foreach (var decisionColumn in DecisionColumns)
             {
                 decisionColumn.InformationGain = TotalEntropy - decisionColumn.Entropy;
+                decisionColumn.ColumnIndex = DecisionColumns.IndexOf(decisionColumn);
             }
+        }
+
+        private void DoUnknownThing()
+        {
+            var rejectedList = DecisionColumns.Where(column => AlreadyUsedIndexes.Contains((int)column.ColumnIndex));
+            var bestOne = DecisionColumns.Except(rejectedList).MaxBy(column => column.InformationGain); //TODO: Except already used
+            AlreadyUsedIndexes.Add((int)bestOne.ColumnIndex);
+            Console.WriteLine($"Columnd index {bestOne.ColumnIndex}");
+            foreach (var attribute in bestOne.Attributes)
+            {
+                var attributeRows = attribute.NegativeRowNumbers.Concat(attribute.PositiveRowNumbers);
+                rejectedList = DecisionColumns.Where(column => AlreadyUsedIndexes.Contains((int)column.ColumnIndex));
+                foreach (var decisionColumn in DecisionColumns.Except(rejectedList))
+                {
+
+                }
+
+
+            }
+            Console.WriteLine(bestOne);
         }
     }
 }

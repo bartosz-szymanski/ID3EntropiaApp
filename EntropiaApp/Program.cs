@@ -11,7 +11,7 @@ namespace EntropiaApp
             var fileReader = new FileReader();
             fileReader.ReadFile();
             var rows = fileReader.Arrays;
-            var antropyCalculator = new LastRowEntropyService(rows);
+            var antropyCalculator = new LastColumnEntropyService(rows);
             antropyCalculator.CalculateEntropies();
             Console.ReadKey();
         }
