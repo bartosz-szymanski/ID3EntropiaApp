@@ -90,31 +90,37 @@ namespace EntropiaApp.Services
         private void DoUnknownThing()
         {
             var rejectedList = DecisionColumns.Where(column => AlreadyUsedIndexes.Contains((int)column.ColumnIndex));
-            var bestOne = DecisionColumns.Except(rejectedList).MaxBy(column => column.InformationGain); //TODO: Except already used
-            AlreadyUsedIndexes.Add((int)bestOne.ColumnIndex);
+            var bestOne = DecisionColumns.Except(rejectedList).MaxBy(column => column.InformationGain); //Nieużyta z największym przyrostem informacji
+            AlreadyUsedIndexes.Add((int)bestOne.ColumnIndex); //Dodajemy ja do listy na przyszlosc
             Console.WriteLine($"Columnd index {bestOne.ColumnIndex}");
-            foreach (var attribute in bestOne.Attributes)
+            foreach (var attribute in bestOne.Attributes) // i dla kazdego atrybutu najlepszej kolumny czyli np. dla pogody iterujemy sie po: sloecznie, pochmurno, itd.
             {
-                var attributeRows = attribute.NegativeRowNumbers.Concat(attribute.PositiveRowNumbers);
-                rejectedList = DecisionColumns.Where(column => AlreadyUsedIndexes.Contains((int)column.ColumnIndex));
-                foreach (var decisionColumn in DecisionColumns.Except(rejectedList))
+                var attributeRows = attribute.NegativeRowNumbers.Concat(attribute.PositiveRowNumbers); // bierzemy wszystkie indeksy wierszy w jakich wystepuja
+                rejectedList = DecisionColumns.Where(column => AlreadyUsedIndexes.Contains((int)column.ColumnIndex)); // i jaka kolumna teraz? rozwazamy znow wszystkie nieuzyte
+                foreach (var decisionColumn in DecisionColumns.Except(rejectedList)) // i iterujemy sie po wszystkich niewykorzystanych kolumnach 
                 {
-                    var restrictedAttributes = new List<DecisionAttributeOccurence>();
-                    foreach (var innerAttribute in decisionColumn.Attributes)
+                    var innerAttributes = decisionColumn.Attributes
+                        .Where(innerAttribute => innerAttribute.PositiveRowNumbers.Intersect(attributeRows).Any() || innerAttribute.NegativeRowNumbers.Intersect(attributeRows).Any()).ToList();
+                    //to sa te atrybuty, ktory wystepuja w wierszach 'attribute'
+                    foreach (var innerAttribute in innerAttributes)
                     {
-                        if (innerAttribute.PositiveRowNumbers.Intersect(attributeRows).Any() || innerAttribute.NegativeRowNumbers.Intersect(attributeRows).Any())
-                        {
-                            restrictedAttributes.Add(innerAttribute);
-                            //Okej, robimy to na przyklad dla slonecznie, ktore wystepuje w wierszach, zalozmy 1,4 (positive in last col) oraz 7, 9 (negative in lst col)
-                            //I teraz sprawdzam ile ta kolumna decyzyjna (np. wilgotnosc) ma roznych attrybutow (np. bardzo, malo) w wierszach 1,4,7,9
-                            //Potrzebuje tego zeby moc policzyc Entropie slonecznie z kazda INNA(!!)* kolumna decyzyjna
-                            //* - czyli dlatego uzywam tych co nie ma w AlreadyUsed zeby sie nie okazalo ze slonecznie porownuje z pogoda, lub innym uzytym
+                        var positiveEntropy = innerAttribute.PositiveRowNumbers.Count != 0
+                            ? MathExtension.GetBinaryLogaritm(innerAttribute.PositiveRowNumbers.Count, innerAttribute.Amount)
+                            : 0d;
+                        var negativeEntropy = innerAttribute.NegativeRowNumbers.Count != 0
+                            ? MathExtension.GetBinaryLogaritm(innerAttribute.NegativeRowNumbers.Count, innerAttribute.Amount)
+                            : 0d;
 
-                            //Jak to bede mial to moge liczyc entropie, w Entropii uzyje ilosc unikalnych atrybutow w kolumnie dla tych wierszy i  tyle jest tych czesci - nawiasow w wyrazeniu matematycznym
-                            //Potem Information Gain jest prosty i mamy go gdzies juz liczonego tutaj wyzej
-                        }
+                        decisionColumn.Entropy += (double)innerAttribute.Amount / DecisionRows.Count * (-positiveEntropy - negativeEntropy);
                     }
-                    decisionColumn.CaseEntropy =
+            
+                    //Okej, robimy to na przyklad dla slonecznie, ktore wystepuje w wierszach, zalozmy 1,4 (positive in last col) oraz 7, 9 (negative in lst col)
+                    //I teraz sprawdzam ile ta kolumna decyzyjna (np. wilgotnosc) ma roznych attrybutow (np. bardzo, malo) w wierszach 1,4,7,9
+                    //Potrzebuje tego zeby moc policzyc Entropie slonecznie z kazda INNA(!!)* kolumna decyzyjna
+                    //* - czyli dlatego uzywam tych co nie ma w AlreadyUsed zeby sie nie okazalo ze slonecznie porownuje z pogoda, lub innym uzytym
+
+                    //Jak to bede mial to moge liczyc entropie, w Entropii uzyje ilosc unikalnych atrybutow w kolumnie dla tych wierszy i  tyle jest tych czesci - nawiasow w wyrazeniu matematycznym
+                    //Potem Information Gain jest prosty i mamy go gdzies juz liczonego tutaj wyzej
                 }
 
 

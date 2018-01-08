@@ -6,7 +6,7 @@ namespace EntropiaApp.Utils
     class FileReader
     {
         public List<string[]> Arrays { get; set; }
-        private readonly string fileName = "C:\\Users\\Bartosz\\Desktop\\plik.txt";
+        private readonly string fileName = "/Users/bartosz/Documents/test123.txt";
         public void ReadFile()
         {
             Arrays = new List<string[]>();

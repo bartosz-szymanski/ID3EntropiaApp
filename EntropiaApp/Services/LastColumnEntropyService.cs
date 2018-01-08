@@ -58,13 +58,8 @@ namespace EntropiaApp.Services
         private double CalculateTotalEntropy()
         {
             var decisions = LastRowOccurences.Sum(occurence => occurence.Amount);
-            var totalEntropy = 0d;
-            foreach (var occurence in LastRowOccurences)
-            {
-                totalEntropy += (double)occurence.Amount / decisions * occurence.Entropy;
-            }
 
-            return totalEntropy;
+            return LastRowOccurences.Sum(occurence => (double) occurence.Amount / decisions * occurence.Entropy);
         }
 
         private void GetInformationGain(double totalEntropy)
