@@ -22,5 +22,6 @@ namespace EntropiaApp.Models
         public int Amount => PositiveRowNumbers.Count + NegativeRowNumbers.Count;
         public List<int> PositiveRowNumbers { get; set; }
         public List<int> NegativeRowNumbers { get; set; }
+        public double CaseEntropy { get; set; }
     }
 }

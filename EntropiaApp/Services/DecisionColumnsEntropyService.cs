@@ -95,32 +95,47 @@ namespace EntropiaApp.Services
             Console.WriteLine($"Columnd index {bestOne.ColumnIndex}");
             foreach (var attribute in bestOne.Attributes) // i dla kazdego atrybutu najlepszej kolumny czyli np. dla pogody iterujemy sie po: sloecznie, pochmurno, itd.
             {
-                var attributeRows = attribute.NegativeRowNumbers.Concat(attribute.PositiveRowNumbers); // bierzemy wszystkie indeksy wierszy w jakich wystepuja
+                var attributeRows = attribute.NegativeRowNumbers.Concat(attribute.PositiveRowNumbers).ToList(); // bierzemy wszystkie indeksy wierszy w jakich wystepuja
                 rejectedList = DecisionColumns.Where(column => AlreadyUsedIndexes.Contains((int)column.ColumnIndex)); // i jaka kolumna teraz? rozwazamy znow wszystkie nieuzyte
-                foreach (var decisionColumn in DecisionColumns.Except(rejectedList)) // i iterujemy sie po wszystkich niewykorzystanych kolumnach 
+                var tempList = DecisionColumns.Except(rejectedList);
+                foreach (var decisionColumn in tempList) // i iterujemy sie po wszystkich niewykorzystanych kolumnach 
                 {
                     var innerAttributes = decisionColumn.Attributes
                         .Where(innerAttribute => innerAttribute.PositiveRowNumbers.Intersect(attributeRows).Any() || innerAttribute.NegativeRowNumbers.Intersect(attributeRows).Any()).ToList();
                     //to sa te atrybuty, ktory wystepuja w wierszach 'attribute'
-                    foreach (var innerAttribute in innerAttributes)
+                    decisionColumn.CaseEntropy = 0;
+                    var allNegatives = innerAttributes.SelectMany(innerAttr => innerAttr.NegativeRowNumbers).ToList();
+                    if (allNegatives.Count(neg => attributeRows.Contains(neg)) > 0)
                     {
-                        var positiveEntropy = innerAttribute.PositiveRowNumbers.Count != 0
-                            ? MathExtension.GetBinaryLogaritm(innerAttribute.PositiveRowNumbers.Count, innerAttribute.Amount)
-                            : 0d;
-                        var negativeEntropy = innerAttribute.NegativeRowNumbers.Count != 0
-                            ? MathExtension.GetBinaryLogaritm(innerAttribute.NegativeRowNumbers.Count, innerAttribute.Amount)
-                            : 0d;
+                        foreach (var innerAttribute in innerAttributes)
+                        {
+                            var innerRows = innerAttribute.NegativeRowNumbers.Concat(innerAttribute.PositiveRowNumbers)
+                                .ToList();
+                            var innerPositiveRows = innerAttribute.PositiveRowNumbers
+                                .Where(inner => attributeRows.Contains(inner)).ToList();
+                            var innerNegativeRows = innerAttribute.NegativeRowNumbers
+                                .Where(inner => attributeRows.Contains(inner)).ToList();
 
-                        decisionColumn.Entropy += (double)innerAttribute.Amount / DecisionRows.Count * (-positiveEntropy - negativeEntropy);
+                            var positiveEntropy = innerPositiveRows.Count != 0
+                                ? MathExtension.GetBinaryLogaritm(innerPositiveRows.Count,
+                                    innerNegativeRows.Count + innerPositiveRows.Count)
+                                : 0d;
+                            var negativeEntropy = innerNegativeRows.Count != 0
+                                ? MathExtension.GetBinaryLogaritm(innerNegativeRows.Count,
+                                    innerNegativeRows.Count + innerPositiveRows.Count)
+                                : 0d;
+
+                            decisionColumn.CaseEntropy +=
+                                (double) (innerNegativeRows.Count + innerPositiveRows.Count) / attributeRows.Count *
+                                (-positiveEntropy - negativeEntropy);
+                        }
+
+                        Console.WriteLine("Wynik: " + decisionColumn.CaseEntropy);
                     }
-            
-                    //Okej, robimy to na przyklad dla slonecznie, ktore wystepuje w wierszach, zalozmy 1,4 (positive in last col) oraz 7, 9 (negative in lst col)
-                    //I teraz sprawdzam ile ta kolumna decyzyjna (np. wilgotnosc) ma roznych attrybutow (np. bardzo, malo) w wierszach 1,4,7,9
-                    //Potrzebuje tego zeby moc policzyc Entropie slonecznie z kazda INNA(!!)* kolumna decyzyjna
-                    //* - czyli dlatego uzywam tych co nie ma w AlreadyUsed zeby sie nie okazalo ze slonecznie porownuje z pogoda, lub innym uzytym
-
-                    //Jak to bede mial to moge liczyc entropie, w Entropii uzyje ilosc unikalnych atrybutow w kolumnie dla tych wierszy i  tyle jest tych czesci - nawiasow w wyrazeniu matematycznym
-                    //Potem Information Gain jest prosty i mamy go gdzies juz liczonego tutaj wyzej
+                    else
+                    {
+                        Console.WriteLine("TAAAAAAAK");
+                    }
                 }
 
 
