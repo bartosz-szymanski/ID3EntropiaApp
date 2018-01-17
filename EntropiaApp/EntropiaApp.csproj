@@ -52,6 +52,7 @@
     <Compile Include="Models\DecisionAttribute.cs" />
     <Compile Include="Models\DecisionAttributeOccurence.cs" />
     <Compile Include="Models\DecisionColumn.cs" />
+    <Compile Include="Models\Tree.cs" />
     <Compile Include="Services\DecisionColumnsEntropyService.cs" />
     <Compile Include="Enums\DecisionType.cs" />
     <Compile Include="Services\LastColumnEntropyService.cs" />
