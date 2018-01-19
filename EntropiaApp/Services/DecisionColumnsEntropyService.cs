@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Linq;
 using System.Security.Cryptography.X509Certificates;
 using EntropiaApp.Enums;
@@ -17,7 +18,6 @@ namespace EntropiaApp.Services
         private double TotalEntropy { get; }
         public List<int> AlreadyUsedIndexes { get; set; }
         public Tree TheTree { get; set; }
-        public int CurrentColumnLevel { get; set; }
 
         public DecisionColumnsEntropyService(List<Occurence> lastRowOccurences, List<string[]> decisionRows, double totalEntropy)
         {
@@ -25,7 +25,6 @@ namespace EntropiaApp.Services
             DecisionRows = decisionRows;
             TotalEntropy = totalEntropy;
             AlreadyUsedIndexes = new List<int>();
-            CurrentColumnLevel = 0;
         }
 
         public List<DecisionColumn> CalculateDecisions()
@@ -61,13 +60,9 @@ namespace EntropiaApp.Services
             CalculateColumnInformationGain();
             var rejectedList = DecisionColumns.Where(column => AlreadyUsedIndexes.Contains((int)column.ColumnIndex));
             var bestOne = DecisionColumns.Except(rejectedList).MaxBy(column => column.InformationGain); //Nieużyta z największym przyrostem informacji
-            TheTree = new Tree {Node = new Node()};
-            TheTree.Node.CurrentDecisionColumn = bestOne;
-            TheTree.Node.PreviousAttribue = null;
-            TheTree.Node.Nodes = new List<Node>();
 
             var indexes = new List<int> {(int) bestOne.ColumnIndex};
-            DoUnknownThing(indexes);
+            DoUnknownThing(indexes, null);
 
             return DecisionColumns;
         }
@@ -99,18 +94,49 @@ namespace EntropiaApp.Services
             }
         }
 
-        private void RecursiveMethod()
+        private DecisionAttributeOccurence GetRowsFromPath(List<int> path)
         {
-            CurrentColumnLevel++;
-            
+            DecisionColumn currentDecisionColumn = null;
+            DecisionAttributeOccurence currentAttribute = null;
+            var positiveRows = new List<int>();
+            var negativeRows = new List<int>();
+            for (var i = 0; i < path.Count; i++)
+            {
+                if (i == 0 || i % 2 == 0)
+                {
+                    currentDecisionColumn = DecisionColumns[path[i]];
+                }
+                else
+                {
+                    currentAttribute = currentDecisionColumn?.Attributes[path[i]];
+                }
+                if (i <= 0) 
+                    continue;
+                
+                if (positiveRows.Count < 1 && negativeRows.Count < 1)
+                {
+                    positiveRows = currentAttribute.PositiveRowNumbers;
+                    negativeRows = currentAttribute.NegativeRowNumbers;
+                }
+                else
+                {
+                    positiveRows = positiveRows.Intersect(currentAttribute.PositiveRowNumbers).ToList();
+                    negativeRows = negativeRows.Intersect(currentAttribute.NegativeRowNumbers).ToList();
+                }
+            }
+            return new DecisionAttributeOccurence(currentAttribute.Value, positiveRows, negativeRows);
         }
-        private void DoUnknownThing(List<int> bestOneIndexes)
+        
+        private void DoUnknownThing(List<int> bestOneIndexes, List<List<int>> fullHierarchy)
         {
-            CurrentColumnLevel++;
+            var index = -1;
             var selectedIndexesForNextRound = new List<int>();
+            var newHierarchy = new List<List<int>>();
             var locallyUsedColumnIndexes = new List<int>();
+            var localAttributeValue = string.Empty;
             foreach (var bestOneIndex in bestOneIndexes)
             {
+                index++;
                 var bestOne = DecisionColumns.First(col => col.ColumnIndex == bestOneIndex);
                 bestOne.ColumnIndex = bestOneIndex;
                 var rejectedList =
@@ -118,16 +144,12 @@ namespace EntropiaApp.Services
                 AlreadyUsedIndexes.Add((int) bestOne.ColumnIndex); //Dodajemy ja do listy na przyszlosc
                 Console.WriteLine($"Columnd index {bestOne.ColumnIndex}");
 
-                foreach (var attribute in bestOne.Attributes
-                ) // i dla kazdego atrybutu najlepszej kolumny czyli np. dla pogody iterujemy sie po: sloecznie, pochmurno, itd.
+                foreach (var attribute in bestOne.Attributes) // i dla kazdego atrybutu najlepszej kolumny czyli np. dla pogody iterujemy sie po: sloecznie, pochmurno, itd.
                 {
                     var attributeRows =
                         attribute.NegativeRowNumbers.Concat(attribute.PositiveRowNumbers)
                             .ToList(); // bierzemy wszystkie indeksy wierszy w jakich wystepuja
-                    rejectedList =
-                        DecisionColumns.Where(column =>
-                            AlreadyUsedIndexes.Contains((int) column
-                                .ColumnIndex)); // i jaka kolumna teraz? rozwazamy znow wszystkie nieuzyte
+                    rejectedList = DecisionColumns.Where(column => AlreadyUsedIndexes.Contains((int) column.ColumnIndex));
                     var tempList = DecisionColumns.Except(rejectedList);
                     foreach (var decisionColumn in tempList
                     ) // i iterujemy sie po wszystkich niewykorzystanych kolumnach 
@@ -166,26 +188,20 @@ namespace EntropiaApp.Services
                                     (double) (innerNegativeRows.Count + innerPositiveRows.Count) / attributeRows.Count *
                                     (-positiveEntropy - negativeEntropy);
                             }
-
-//                        Console.WriteLine("Wynik: " + decisionColumn.CaseEntropy);
                         }
                         else
                         {
                             decisionColumn.CaseEntropy = -1;
-//                        Console.WriteLine("TAAAAAAAK");
                         }
                         locallyUsedColumnIndexes.Add(Convert.ToInt32(decisionColumn.ColumnIndex));
                     }
-                    Console.WriteLine("Nazwa atrybutuc" + attribute.Value);
+                    Console.WriteLine("Nazwa atrybutu" + attribute.Value);
+                    localAttributeValue = attribute.Value;
                     if (tempList.Any())
                     {
                         var x = tempList.MinBy(column => column.CaseEntropy);
-                        if (attribute.PositiveRowNumbers.Count == 0 && attribute.NegativeRowNumbers.Count > 0) //to musze zmienic zeby sprawdzac w liniach ktore dotycza 'slonecznie'
-                            //tylko skad wiedziec ze to chodzi o sloneczenie tutaj?
-                            //tego wlasnie nie wiem
-                            //moze jakis aray arayow, gdzie kazdy by odpowiadal kolejneli linii
-                            //[[pogoda], [slonecznie, pochmurno, deszczowo], [wilgotnosc, -1, wiatr], [x, wysoka, x, x, slaby, silny],[tak, nie, x, x, tak, nie]]
-                            //help
+                        
+                        if (attribute.PositiveRowNumbers.Count == 0 && attribute.NegativeRowNumbers.Count > 0) 
                         {
                             Console.WriteLine("NOPE NOPE NOPE");
                         }
@@ -195,21 +211,51 @@ namespace EntropiaApp.Services
                             selectedIndexesForNextRound.Add(Convert.ToInt32(x.ColumnIndex));
                         }
                         else
-                            Console.WriteLine("Wartość >>>> " + x.CaseEntropy);
+                        {
+                            if(attribute.PositiveRowNumbers.Count == 0 && attribute.NegativeRowNumbers.Count > 0)
+                                Console.WriteLine("Nie");
+                            if(attribute.PositiveRowNumbers.Count > 0 && attribute.NegativeRowNumbers.Count == 0)
+                                Console.WriteLine("Tak");
+                        }
+                        var currentBranchHierarchy = new List<int>();
+            
+                        if (fullHierarchy?[index] != null)
+                            currentBranchHierarchy.AddRange(fullHierarchy[index]);
+                        else
+                            currentBranchHierarchy.Add(bestOneIndexes.First());
+
+                        if (localAttributeValue != "-1" && x.CaseEntropy > -1)
+                        {
+                            var upperColumn = DecisionColumns[bestOneIndexes[index]];
+                            currentBranchHierarchy.Add(upperColumn.Attributes.FindIndex(atr => atr.Value == localAttributeValue));
+                            currentBranchHierarchy.Add(selectedIndexesForNextRound[index]);
+                            newHierarchy.Add(currentBranchHierarchy);
+                        }
                     }
                     else
                     {
+                        var newThing = GetRowsFromPath(fullHierarchy[index]);
+                        var positiveRows = attribute.PositiveRowNumbers.Intersect(newThing.PositiveRowNumbers).ToList();
+                        var negativeRows = attribute.NegativeRowNumbers.Intersect(newThing.NegativeRowNumbers).ToList();
                         var x = attribute.NegativeRowNumbers.Count;
                         var y = attribute.PositiveRowNumbers.Count;
-                        Console.WriteLine("cos innego");
+                        if (positiveRows.Count == 0 && negativeRows.Count > 0)
+                        {
+                            Console.WriteLine("Nie!");
+                        }
+                        else if( positiveRows.Count > 0 && negativeRows.Count == 0)
+                        {
+                            Console.WriteLine("Tak!");
+                        }
                     }
                 }
                 //Sprzatanie tutaj?
                 Console.WriteLine("----------------------");
             }
             AlreadyUsedIndexes.AddRange(locallyUsedColumnIndexes);
+           
             if(selectedIndexesForNextRound.Count > 1)
-                DoUnknownThing(selectedIndexesForNextRound);
+                DoUnknownThing(selectedIndexesForNextRound, newHierarchy);
         }
     }
 }
